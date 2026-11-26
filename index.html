@@ -75,6 +75,10 @@ td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
 @keyframes hop{50%{transform:translateY(-9px)}}
 @media (max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media (prefers-reduced-motion:reduce){.grid img{animation:none}}
+.bigname{font-family:'Lobster','Brush Script MT',cursive;font-size:clamp(34px,9vw,48px);color:var(--red);line-height:1.1;margin:2px 0 6px}
+.pop{margin-top:14px;text-align:left;animation:pop .9s cubic-bezier(.3,1.4,.5,1) 1.7s both}
+@keyframes pop{from{opacity:0;transform:translateY(-70px) scale(.3) rotate(-10deg)}to{opacity:1;transform:rotate(-1deg)}}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
 </style>
 </head>
 <body>
@@ -131,6 +135,7 @@ td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
 <p id="orgInfo"></p>
 <button class="go" id="shuffle">Xáo trộn &amp; chốt bốc thăm</button>
 <button class="go alt" id="reset">Hủy kết quả bốc thăm</button>
+<button class="go" id="wipe" style="background:var(--deep);border-bottom-color:#5c000c">Xóa tất cả người đăng ký</button>
 <div class="scroll" style="margin-top:14px"><table><thead><tr><th>Tên</th><th>Email</th></tr></thead><tbody id="list"></tbody></table></div>
 </div>
 <div id="orgMsg" class="msg hide"></div>
@@ -196,17 +201,19 @@ $('send').onclick=async()=>{
   $('send').disabled=false;
 };
 
+const mk=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x)e.textContent=x;return e};
 $('look').onclick=async()=>{
   const out=$('seeOut'),q=$('myemail').value.trim();out.textContent='';if(!q)return;
-  const note=t=>{const d=document.createElement('div');d.className='msg';d.textContent=t;out.append(d)};
+  const note=t=>out.append(mk('div','msg',t));
   try{
     const r=await api('lookup',{email:q});
     if(r.state==='unknown')return note('Chưa thấy email này trong danh sách đăng ký.');
     if(r.state!=='ready')return note('Chưa bốc thăm. Quay lại sau khi người tổ chức chốt nhé!');
-    const h=document.createElement('h2');h.textContent='Bạn là Santa của '+r.name;
-    const s=document.createElement('p');s.className='hint';s.textContent='Quà tối đa 200.000 VND · Giữ bí mật nhé!';
-    const l=document.createElement('div');l.className='paper';l.textContent=r.letter;
-    out.append(h,s,l);
+    const box=mk('div','center'),stage=mk('div','center hide');
+    const btn=mk('button','go','Mở thư');
+    btn.onclick=()=>{btn.classList.add('hide');stage.classList.remove('hide');stage.innerHTML=stocking();stage.append(mk('div','paper pop',r.letter))};
+    box.append(mk('h2','','Người nhận quà của bạn là…'),mk('div','bigname',r.name),mk('p','',r.name+' có một lá thư muốn gửi tới bạn'),btn,stage,mk('p','hint','Quà tối đa 200.000 VND · Giữ bí mật nhé!'));
+    out.append(box);
   }catch(e){note(e.message)}
 };
 
@@ -235,6 +242,13 @@ $('reset').onclick=async()=>{
   if(!confirmReset){confirmReset=true;$('reset').textContent='Bấm lần nữa để hủy kết quả';return}
   confirmReset=false;$('reset').textContent='Hủy kết quả bốc thăm';
   try{await api('reset',{pw});await loadOrg();say($('orgMsg'),'Đã hủy kết quả, có thể bốc thăm lại.')}catch(e){say($('orgMsg'),e.message,true)}
+};
+let confirmWipe=false;
+$('wipe').onclick=async()=>{
+  const b=$('wipe');
+  if(!confirmWipe){confirmWipe=true;b.textContent='Bấm lần nữa để XÓA HẾT người đăng ký';setTimeout(()=>{confirmWipe=false;b.textContent='Xóa tất cả người đăng ký'},6000);return}
+  confirmWipe=false;b.textContent='Xóa tất cả người đăng ký';
+  try{await api('wipe',{pw});await loadOrg();say($('orgMsg'),'Đã xóa hết người đăng ký và kết quả bốc thăm. Mọi người có thể nhập lại từ đầu.')}catch(e){say($('orgMsg'),e.message,true)}
 };
 refresh();
 </script>
